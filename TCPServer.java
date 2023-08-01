@@ -16,6 +16,8 @@ public class TCPServer {
         boolean[] cells = new boolean[64]; 
         String[] cellOwners = new String[64]; 
         boolean[] cellClaimed = new boolean[64]; 
+        Arrays.fill(cells, true);
+        boolean[] gameStarted = {false};
 
         while (true) {
             Socket socket = serverSocket.accept();
@@ -24,7 +26,7 @@ public class TCPServer {
                 //System.out.println("Maximum client limit reached");
                 socket.close();
             } else {
-                ServerThread st = new ServerThread(socket, clients, names[clientCounter.get()], cells, cellOwners, cellClaimed);
+                ServerThread st = new ServerThread(socket, clients, names[clientCounter.get()], cells, cellOwners, cellClaimed, gameStarted);
                 clients.add(st);
                 st.start();
                 for(ServerThread client : clients) {
@@ -38,8 +40,6 @@ public class TCPServer {
     }
 }
 
-
-
 class ServerThread extends Thread {
     private Socket socket;
     private ArrayList<ServerThread> clients;
@@ -48,15 +48,17 @@ class ServerThread extends Thread {
     private boolean[] cells;
     private String[] cellOwners;
     private boolean[] cellClaimed;
+    boolean[] gameStarted;
     private Pattern pattern = Pattern.compile("\\(([^)]+)\\)"); // regex to extract number from messages
 
-    public ServerThread(Socket socket, ArrayList<ServerThread> clients, String username, boolean[] cells, String[] cellOwners, boolean[] cellClaimed) {
+    public ServerThread(Socket socket, ArrayList<ServerThread> clients, String username, boolean[] cells, String[] cellOwners, boolean[] cellClaimed, boolean[] gameStarted) {
         this.socket = socket;
         this.clients = clients;
         this.username = username;
         this.cells = cells;
         this.cellOwners = cellOwners;
         this.cellClaimed = cellClaimed;
+        this.gameStarted = gameStarted;
     }
 
     public void sendMessage(String message) {
@@ -71,37 +73,51 @@ class ServerThread extends Thread {
             OutputStream output = socket.getOutputStream();
             writer = new PrintWriter(output, true);
 
+            for(ServerThread client : clients) {
+                if (client != this) {
+                    writer.println(client.username + " is already connected");
+                }
+            }
+
             writer.println("You are client " + username); // tell the client its username
 
             while (true) {
                 String clientMessage = reader.readLine();
                 Matcher matcher = pattern.matcher(clientMessage);
                 String number = "";
+                int cellNumber = -1;  // initialize with an invalid value
+
                 if (matcher.find()) {
                     number = matcher.group(1); // extract number
+                    cellNumber = Integer.parseInt(number);  // only try to parse when a number is present
                 }
-                int cellNumber = Integer.parseInt(number);
 
                 synchronized(cells) {
-                    if (clientMessage.startsWith("LOCK")) {
+                    if (clientMessage.startsWith("LOCK") && cellNumber != -1) {
                         if(cellNumber >= 0 && cellNumber < 64 && !cells[cellNumber] && !cellClaimed[cellNumber]) {
                             // System.out.println("Lock command received: " + clientMessage);
                             cells[cellNumber] = true; // lock the cell
                             cellOwners[cellNumber] = username; // set the owner
                             broadcastMessage("LOCKED(" + number + ")");
                         }
-                    } else if (clientMessage.startsWith("UNLOCK")) {
+                    } else if (clientMessage.startsWith("UNLOCK") && cellNumber != -1) {
                         if(cellNumber >= 0 && cellNumber < 64 && cells[cellNumber] && cellOwners[cellNumber].equals(username) && !cellClaimed[cellNumber]) {
                             System.out.println("Unlock command received: " + clientMessage);
                             cells[cellNumber] = false; // unlock the cell
                             cellOwners[cellNumber] = null; // remove the owner
                             broadcastMessage("UNLOCKED(" + number + ")");
                         }
-                    } else if (clientMessage.startsWith("CLAIM")) {
+                    } else if (clientMessage.startsWith("CLAIM") && cellNumber != -1) {
                         if(cellNumber >= 0 && cellNumber < 64 && cells[cellNumber] && cellOwners[cellNumber].equals(username) && !cellClaimed[cellNumber]) {
                             // System.out.println("Claim command received: " + clientMessage);
                             cellClaimed[cellNumber] = true; // the cell has been claimed
                             broadcastMessage("CLAIMED(" + number + ", " + username + ")");
+                        }
+                    }  else if (clientMessage.equals("START") && username.equals("Red")) {
+                        Arrays.fill(cells, false);
+                        gameStarted[0] = true;
+                        for(ServerThread client : clients) {
+                            client.sendMessage("Game has started, you can now lock, unlock, and claim cells");
                         }
                     } else {
                         // System.out.println("Message received: " + clientMessage);
