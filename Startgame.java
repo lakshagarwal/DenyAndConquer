@@ -28,8 +28,21 @@ public class Startgame extends JFrame {
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         // button to start the game
-        JButton startButton = new JButton("Join Game Server");
-        startButton.addActionListener(new ActionListener() {
+        JButton startButtonServer = new JButton("Join Game as Server");
+        startButtonServer.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Close Startgame
+                dispose();
+                // Open DivideAndConquerGame 
+                SwingUtilities.invokeLater(() -> {
+                    new JoiningScreen_Server();
+                });
+            }
+        });
+
+        JButton startButtonClient = new JButton("Join Game as Client");
+        startButtonClient.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 // Close Startgame
@@ -52,7 +65,8 @@ public class Startgame extends JFrame {
 
         // Create a panel to hold the buttons
         JPanel buttonPanel = new JPanel();
-        buttonPanel.add(startButton);
+        buttonPanel.add(startButtonServer);
+        buttonPanel.add(startButtonClient);
         buttonPanel.add(exitButton);
 
         // Add components to the frame using the BorderLayout

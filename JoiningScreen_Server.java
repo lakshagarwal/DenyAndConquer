@@ -1,8 +1,10 @@
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
-public class JoiningScreen extends JFrame {
-    public JoiningScreen() {
+public class JoiningScreen_Server extends JFrame {
+    public JoiningScreen_Server() {
         // Set window properties
         setTitle("Game Screen");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -18,6 +20,20 @@ public class JoiningScreen extends JFrame {
         JLabel label2 = new JLabel("Label 2");
         JLabel label3 = new JLabel("Label 3");
         JLabel label4 = new JLabel("Label 4");
+
+        // Create the button
+        JButton startButton = new JButton("Start Game");
+        startButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Close Startgame
+                dispose();
+                // Open DivideAndConquerGame 
+                SwingUtilities.invokeLater(() -> {
+                    new InteractiveFillableColorGridGUI();
+                });
+            }
+        });
 
         // Add the components to the panel using GridBagConstraints to position them
         GridBagConstraints constraints = new GridBagConstraints();
@@ -37,6 +53,7 @@ public class JoiningScreen extends JFrame {
 
         constraints.gridy = 4;
         constraints.gridwidth = 2; // Make the button span two columns
+        panel.add(startButton, constraints);
 
         // Add the panel to the frame
         add(panel);
@@ -46,6 +63,6 @@ public class JoiningScreen extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new JoiningScreen());
+        SwingUtilities.invokeLater(() -> new JoiningScreen_Server());
     }
 }
