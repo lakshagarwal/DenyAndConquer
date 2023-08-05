@@ -2,6 +2,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.Random;
 
 public class InteractiveFillableColorGridGUI extends JFrame {
 
@@ -12,7 +13,7 @@ public class InteractiveFillableColorGridGUI extends JFrame {
     private int[][] pixelsFilled; // Counter for each box
 
     public InteractiveFillableColorGridGUI() {
-        setTitle("Interactive Fillable Color Grid");
+        setTitle("Deny and Conquer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
 
@@ -63,6 +64,16 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             this.col = col;
         }
 
+        public static int generateRandomNumber() {
+            // Create a Random object
+            Random random = new Random();
+        
+            // Generate a random number between 1 and 100 (inclusive)
+            int randomNumber = random.nextInt(100) + 1;
+        
+            return randomNumber;
+        }
+
         @Override
         public void mousePressed(MouseEvent e) {
             isMousePressed = true;
@@ -82,13 +93,14 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             int totalPixels = panel.getWidth() * panel.getHeight();
             int filledPixels = pixelsFilled[row][col];
             double percentageFilled = (double) filledPixels / totalPixels;
-            if (percentageFilled <= 0.5) {
+            int randomInt = generateRandomNumber();
+            if (randomInt >= 50) {
+                // Fill the box if the percentage is more than or equal to 50%
+                fillEntireBox(panel);
+            } else {
                 // Clear the box if the percentage is less than 50% OR
                 // Reset the pixel count for the next scribble
                 clearBox(panel); 
-            } else {
-                // Fill the box if the percentage is more than 50%
-                fillEntireBox(panel);
             }
         }
     }
@@ -119,19 +131,23 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         int mouseY = panel.getMousePosition().y;
 
         if (mouseX >= 0 && mouseY >= 0 && mouseX < panelWidth && mouseY < panelHeight) {
-            panel.getGraphics().fillRect(mouseX, mouseY, 5, 5); // Larger stroke width for crayon-like effect
-            pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)]++;
-            panel.repaint(); // Repaint the panel to update the scribbles
+            panel.getGraphics().fillRect(mouseX, mouseY, 8, 8); // Larger stroke width for crayon-like effect
+            pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
+                    panelWidth * panelHeight; // Set pixelsFilled to maximum
+            panel.repaint(); // Repaint the panel to fill the entire box with black
         }
     }
 
     private void fillEntireBox(JPanel panel) {
         panel.setBackground(Color.BLACK); // Change the color to be filled with
+        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
+                // panel.getWidth() * panel.getHeight(); // Set pixelsFilled to maximum
         panel.repaint(); // Repaint the panel to fill the entire box with black
     }
 
     private void clearBox(JPanel panel) {
         panel.setBackground(Color.WHITE); // Change the color to be cleared
+        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] = 0; // Reset pixelsFilled
         panel.repaint(); // Repaint the panel to clear the box
     }
 
@@ -139,4 +155,3 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         SwingUtilities.invokeLater(() -> new InteractiveFillableColorGridGUI());
     }
 }
-
