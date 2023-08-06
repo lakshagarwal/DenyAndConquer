@@ -12,6 +12,7 @@ public class InteractiveFillableColorGridGUI extends JFrame {
     private int[][] pixelsFilled;
     private TCPClient client;
     private Color userColor;
+    private boolean[][] cellClaimed = new boolean[GRID_SIZE][GRID_SIZE];
 
     public InteractiveFillableColorGridGUI(TCPClient client, String color) {
         this.client = client;
@@ -67,14 +68,10 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             this.col = col;
         }
 
-        public static int generateRandomNumber() {
-            Random random = new Random();
-            int randomNumber = random.nextInt(100) + 1;
-            return randomNumber;
-        }
-
         @Override
         public void mousePressed(MouseEvent e) {
+            if (cellClaimed[row][col]) return;  // Return early if cell has been claimed
+
             isMousePressed = true;
             isScribbling = true;
             if (isScribbling) {
@@ -88,6 +85,8 @@ public class InteractiveFillableColorGridGUI extends JFrame {
 
         @Override
         public void mouseReleased(MouseEvent e) {
+            if (cellClaimed[row][col]) return;  // Return early if cell has been claimed
+
             isMousePressed = false;
             isScribbling = false;
             JPanel panel = (JPanel) e.getComponent();
@@ -116,6 +115,8 @@ public class InteractiveFillableColorGridGUI extends JFrame {
 
         @Override
         public void mouseDragged(MouseEvent e) {
+            if (cellClaimed[row][col]) return;  // Return early if cell has been claimed
+
             if (isMousePressed && isScribbling) {
                 JPanel panel = (JPanel) e.getComponent();
                 fillBox(panel, row, col);
@@ -143,7 +144,6 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         panel.repaint();
     }
 
-    
     public void lockCell(int cellNumber) {
         int row = cellNumber / GRID_SIZE;
         int col = cellNumber % GRID_SIZE;
@@ -161,6 +161,7 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         int col = cellNumber % GRID_SIZE;
         Color ownerColor = getColorForOwner(owner);
         gridBoxes[row][col].setBackground(ownerColor);
+        cellClaimed[row][col] = true;  // Mark the cell as claimed
     }
 
     private Color getColorForOwner(String owner) {
