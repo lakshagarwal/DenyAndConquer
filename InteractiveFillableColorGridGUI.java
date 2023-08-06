@@ -5,14 +5,15 @@ import java.awt.event.MouseEvent;
 import java.util.Random;
 
 public class InteractiveFillableColorGridGUI extends JFrame {
-
     private static final int GRID_SIZE = 8;
     private JPanel[][] gridBoxes;
     private boolean isMousePressed = false;
     private boolean isScribbling = false;
-    private int[][] pixelsFilled; // Counter for each box
+    private int[][] pixelsFilled;
+    private TCPClient client;
 
-    public InteractiveFillableColorGridGUI() {
+    public InteractiveFillableColorGridGUI(TCPClient client) {
+        this.client = client;
         setTitle("Deny and Conquer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
@@ -41,16 +42,16 @@ public class InteractiveFillableColorGridGUI extends JFrame {
                         }
                     }
                 };
-                gridBoxes[row][col].setBackground(Color.WHITE); // Set initial color to white
+                gridBoxes[row][col].setBackground(Color.WHITE); 
                 gridBoxes[row][col].setBorder(BorderFactory.createLineBorder(Color.BLACK));
-                gridBoxes[row][col].setLayout(null); // Set layout to null for precise control
+                gridBoxes[row][col].setLayout(null);
                 gridBoxes[row][col].addMouseListener(new ColorMouseListener(rowIndex, colIndex));
                 gridBoxes[row][col].addMouseMotionListener(new ColorMouseMotionListener(rowIndex, colIndex));
                 add(gridBoxes[row][col]);
             }
         }
 
-        setSize(800, 800); // Set the window size to 800x800
+        setSize(800, 800);
         setLocationRelativeTo(null);
         setVisible(true);
     }
@@ -65,12 +66,8 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         }
 
         public static int generateRandomNumber() {
-            // Create a Random object
             Random random = new Random();
-        
-            // Generate a random number between 1 and 100 (inclusive)
             int randomNumber = random.nextInt(100) + 1;
-        
             return randomNumber;
         }
 
@@ -82,7 +79,9 @@ public class InteractiveFillableColorGridGUI extends JFrame {
                 pixelsFilled[row][col] = 0;
             }
             JPanel panel = (JPanel) e.getComponent();
-            fillBox(panel);
+            
+            client.lockBox(row, col);
+            fillBox(panel, row, col);
         }
 
         @Override
@@ -92,15 +91,14 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             JPanel panel = (JPanel) e.getComponent();
             int totalPixels = panel.getWidth() * panel.getHeight();
             int filledPixels = pixelsFilled[row][col];
-            double percentageFilled = (double) filledPixels / totalPixels;
-            int randomInt = generateRandomNumber();
-            if (randomInt >= 50) {
-                // Fill the box if the percentage is more than or equal to 50%
-                fillEntireBox(panel);
+            double percentageFilled = (double) filledPixels / totalPixels * 100;
+
+            if (percentageFilled >= 50) {
+                client.claimBox(row, col);
+                fillBox(panel, row, col);
             } else {
-                // Clear the box if the percentage is less than 50% OR
-                // Reset the pixel count for the next scribble
-                clearBox(panel); 
+                client.unlockBox(row, col);
+                clearBox(panel, row, col);
             }
         }
     }
@@ -118,12 +116,12 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         public void mouseDragged(MouseEvent e) {
             if (isMousePressed && isScribbling) {
                 JPanel panel = (JPanel) e.getComponent();
-                fillBox(panel);
+                fillBox(panel, row, col);
             }
         }
     }
 
-    private void fillBox(JPanel panel) {
+    private void fillBox(JPanel panel, int row, int col) {
         int panelWidth = panel.getWidth();
         int panelHeight = panel.getHeight();
 
@@ -131,27 +129,45 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         int mouseY = panel.getMousePosition().y;
 
         if (mouseX >= 0 && mouseY >= 0 && mouseX < panelWidth && mouseY < panelHeight) {
-            panel.getGraphics().fillRect(mouseX, mouseY, 8, 8); // Larger stroke width for crayon-like effect
-            pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
-                    panelWidth * panelHeight; // Set pixelsFilled to maximum
-            panel.repaint(); // Repaint the panel to fill the entire box with black
+            panel.getGraphics().fillRect(mouseX, mouseY, 8, 8);
+            pixelsFilled[row][col] += 64; // Increment by the area of the small box
+            panel.repaint();
         }
     }
 
-    private void fillEntireBox(JPanel panel) {
-        panel.setBackground(Color.BLACK); // Change the color to be filled with
-        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
-                // panel.getWidth() * panel.getHeight(); // Set pixelsFilled to maximum
-        panel.repaint(); // Repaint the panel to fill the entire box with black
+    private void clearBox(JPanel panel, int row, int col) {
+        panel.setBackground(Color.WHITE);
+        pixelsFilled[row][col] = 0;  // Reset the pixel count for the box
+        panel.repaint();
     }
 
-    private void clearBox(JPanel panel) {
-        panel.setBackground(Color.WHITE); // Change the color to be cleared
-        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] = 0; // Reset pixelsFilled
-        panel.repaint(); // Repaint the panel to clear the box
+    
+    public void lockCell(int cellNumber) {
+        int row = cellNumber / GRID_SIZE;
+        int col = cellNumber % GRID_SIZE;
+        gridBoxes[row][col].setBackground(Color.GRAY);
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new InteractiveFillableColorGridGUI());
+    public void unlockCell(int cellNumber) {
+        int row = cellNumber / GRID_SIZE;
+        int col = cellNumber % GRID_SIZE;
+        gridBoxes[row][col].setBackground(Color.WHITE);
+    }
+
+    public void claimCell(int cellNumber, String owner) {
+        int row = cellNumber / GRID_SIZE;
+        int col = cellNumber % GRID_SIZE;
+        Color ownerColor = getColorForOwner(owner);
+        gridBoxes[row][col].setBackground(ownerColor);
+    }
+
+    private Color getColorForOwner(String owner) {
+        switch (owner) {
+            case "Red": return Color.RED;
+            case "Blue": return Color.BLUE;
+            case "Green": return Color.GREEN;
+            case "Yellow": return Color.YELLOW;
+            default: return Color.WHITE;
+        }
     }
 }
