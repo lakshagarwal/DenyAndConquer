@@ -2,7 +2,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.Random;
+import java.util.ArrayList;
+import java.util.List;
 
 public class InteractiveFillableColorGridGUI extends JFrame {
 
@@ -10,15 +11,19 @@ public class InteractiveFillableColorGridGUI extends JFrame {
     private JPanel[][] gridBoxes;
     private boolean isMousePressed = false;
     private boolean isScribbling = false;
-    private int[][] pixelsFilled; // Counter for each box
+    private List<List<Point>> player1ScribblePaths; // Player 1's paths (scribbles) for each panel
+    private List<List<Point>> player2ScribblePaths; // Player 2's paths (scribbles) for each panel
+    private Color currentPlayerColor;
 
     public InteractiveFillableColorGridGUI() {
-        setTitle("Deny and Conquer");
+        setTitle("Interactive Fillable Color Grid");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
 
         gridBoxes = new JPanel[GRID_SIZE][GRID_SIZE];
-        pixelsFilled = new int[GRID_SIZE][GRID_SIZE];
+        player1ScribblePaths = new ArrayList<>();
+        player2ScribblePaths = new ArrayList<>();
+        currentPlayerColor = Color.RED; // Player 1 starts with red color
 
         for (int row = 0; row < GRID_SIZE; row++) {
             for (int col = 0; col < GRID_SIZE; col++) {
@@ -28,15 +33,19 @@ public class InteractiveFillableColorGridGUI extends JFrame {
                     @Override
                     protected void paintComponent(Graphics g) {
                         super.paintComponent(g);
-                        if (pixelsFilled[rowIndex][colIndex] > 0) {
+                        int pathIndex = rowIndex * GRID_SIZE + colIndex;
+                        List<Point> scribblePath;
+                        if (currentPlayerColor == Color.RED) {
+                            scribblePath = player1ScribblePaths.size() > pathIndex ? player1ScribblePaths.get(pathIndex) : null;
+                        } else {
+                            scribblePath = player2ScribblePaths.size() > pathIndex ? player2ScribblePaths.get(pathIndex) : null;
+                        }
+
+                        if (isScribbling && scribblePath != null) {
                             Graphics2D g2d = (Graphics2D) g;
-                            g2d.setColor(Color.BLACK);
-                            int panelWidth = getWidth();
-                            int panelHeight = getHeight();
-                            for (int i = 0; i < pixelsFilled[rowIndex][colIndex]; i++) {
-                                int randX = (int) (Math.random() * panelWidth);
-                                int randY = (int) (Math.random() * panelHeight);
-                                g2d.fillRect(randX, randY, 3, 3);
+                            g2d.setColor(currentPlayerColor);
+                            for (Point point : scribblePath) {
+                                g2d.fillRect(point.x, point.y, 3, 3);
                             }
                         }
                     }
@@ -64,24 +73,15 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             this.col = col;
         }
 
-        public static int generateRandomNumber() {
-            // Create a Random object
-            Random random = new Random();
-        
-            // Generate a random number between 1 and 100 (inclusive)
-            int randomNumber = random.nextInt(100) + 1;
-        
-            return randomNumber;
-        }
-
         @Override
         public void mousePressed(MouseEvent e) {
             isMousePressed = true;
             isScribbling = true;
-            if (isScribbling) {
-                pixelsFilled[row][col] = 0;
-            }
             JPanel panel = (JPanel) e.getComponent();
+            int pathIndex = row * GRID_SIZE + col;
+            if (pathIndex >= getCurrentScribblePaths().size()) {
+                getCurrentScribblePaths().add(new ArrayList<>());
+            }
             fillBox(panel);
         }
 
@@ -90,18 +90,31 @@ public class InteractiveFillableColorGridGUI extends JFrame {
             isMousePressed = false;
             isScribbling = false;
             JPanel panel = (JPanel) e.getComponent();
-            int totalPixels = panel.getWidth() * panel.getHeight();
-            int filledPixels = pixelsFilled[row][col];
-            double percentageFilled = (double) filledPixels / totalPixels;
-            int randomInt = generateRandomNumber();
-            if (randomInt >= 50) {
-                // Fill the box if the percentage is more than or equal to 50%
-                fillEntireBox(panel);
+            int pathIndex = row * GRID_SIZE + col;
+            List<Point> scribblePath = getCurrentScribblePaths().get(pathIndex);
+
+            // Calculate covered area
+            double coveredArea = calculateCoveredArea(scribblePath);
+
+            // Check if the area is more than 50%
+            if (coveredArea >= 0.5) {
+                // Mark the box as taken over by the current player
+                panel.setBackground(currentPlayerColor);
+                // Remove the scribble path, as the box is taken over
+                scribblePath.clear();
+                // Set isFilled to true, so other players cannot scribble in this box
+                panel.putClientProperty("isFilled", true);
             } else {
-                // Clear the box if the percentage is less than 50% OR
-                // Reset the pixel count for the next scribble
-                clearBox(panel); 
+                // If less than 50%, reset the box to white
+                panel.setBackground(Color.WHITE);
+                // Clear the scribble path for the box
+                scribblePath.clear();
             }
+
+            // Repaint the panel to update the change
+            panel.repaint();
+
+            switchPlayer();
         }
     }
 
@@ -131,27 +144,50 @@ public class InteractiveFillableColorGridGUI extends JFrame {
         int mouseY = panel.getMousePosition().y;
 
         if (mouseX >= 0 && mouseY >= 0 && mouseX < panelWidth && mouseY < panelHeight) {
-            panel.getGraphics().fillRect(mouseX, mouseY, 8, 8); // Larger stroke width for crayon-like effect
-            pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
-                    panelWidth * panelHeight; // Set pixelsFilled to maximum
-            panel.repaint(); // Repaint the panel to fill the entire box with black
+            int pathIndex = panel.getParent().getComponentZOrder(panel);
+            if (pathIndex >= getCurrentScribblePaths().size()) {
+                getCurrentScribblePaths().add(new ArrayList<>());
+            }
+            getCurrentScribblePaths().get(pathIndex).add(new Point(mouseX, mouseY));
+            panel.repaint(); // Repaint the panel to update the scribbles
         }
     }
 
-    private void fillEntireBox(JPanel panel) {
-        panel.setBackground(Color.BLACK); // Change the color to be filled with
-        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] =
-                // panel.getWidth() * panel.getHeight(); // Set pixelsFilled to maximum
-        panel.repaint(); // Repaint the panel to fill the entire box with black
+    private List<List<Point>> getCurrentScribblePaths() {
+        return currentPlayerColor == Color.RED ? player1ScribblePaths : player2ScribblePaths;
     }
 
-    private void clearBox(JPanel panel) {
-        panel.setBackground(Color.WHITE); // Change the color to be cleared
-        // pixelsFilled[panel.getParent().getComponentZOrder(panel)][panel.getComponentZOrder(panel)] = 0; // Reset pixelsFilled
-        panel.repaint(); // Repaint the panel to clear the box
+    private double calculateCoveredArea(List<Point> scribblePath) {
+        if (scribblePath.isEmpty()) {
+            return 0.0;
+        }
+
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (Point point : scribblePath) {
+            int x = point.x;
+            int y = point.y;
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        }
+
+        int boxArea = gridBoxes[0][0].getWidth() * gridBoxes[0][0].getHeight();
+        int coveredArea = (maxX - minX + 1) * (maxY - minY + 1);
+
+        double coveragePercentage = (double) coveredArea / boxArea;
+        return coveragePercentage;
+    }
+
+    private void switchPlayer() {
+        currentPlayerColor = currentPlayerColor == Color.RED ? Color.BLUE : Color.RED;
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new InteractiveFillableColorGridGUI());
+        SwingUtilities.invokeLater(InteractiveFillableColorGridGUI::new);
     }
 }
