@@ -11,6 +11,7 @@ public class TCPServer {
     private AtomicInteger clientCounter = new AtomicInteger();
     private String[] names = {"Red", "Blue", "Green", "Yellow"};
     private String[] cellOwners = new String[64];
+    private int[] playerScores = new int[4]; // <-- NEW: To keep track of scores
     private boolean gameStarted = false;
 
     public TCPServer() throws IOException {
@@ -88,6 +89,23 @@ public class TCPServer {
                         } else if (clientMessage.startsWith("CLAIM") && cellNumber != -1) {
                             if(cellOwners[cellNumber].equals(username)) {
                                 server.broadcastMessage("CLAIMED(" + number + ", " + username + ")");
+                                
+                                playerScores[Arrays.asList(names).indexOf(username)] += 1;
+                                
+                                if (Arrays.stream(cellOwners).allMatch(Objects::nonNull)) {
+                                    int maxScore = Arrays.stream(playerScores).max().getAsInt();
+                                    List<String> winners = new ArrayList<>();
+                                    for (int i = 0; i < 4; i++) {
+                                        if (playerScores[i] == maxScore) {
+                                            winners.add(names[i]);
+                                        }
+                                    }
+                                    if (winners.size() > 1) {
+                                        server.broadcastMessage("GAME_OVER(Tie between " + String.join(", ", winners) + ")");
+                                    } else {
+                                        server.broadcastMessage("GAME_OVER(" + winners.get(0) + " wins)");
+                                    }
+                                }
                             }
                         } else if (clientMessage.equals("START") && username.equals("Red")) {
                             gameStarted = true;

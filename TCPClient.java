@@ -1,5 +1,7 @@
 import java.io.*;
 import java.net.*;
+import javax.swing.*;
+import java.util.*;
 
 public class TCPClient {
 
@@ -96,8 +98,13 @@ class ReadThread extends Thread {
                 String owner = parts[1].substring(0, parts[1].length() - 1);
                 int cellNumber = Integer.parseInt(cellStr);
                 client.claimCellInGui(cellNumber, owner);
-            } else if (response.equals("START_GAME")) {
-                }
+            }  else if (response.startsWith("GAME_OVER")) {
+                String result = response.substring(10, response.length() - 1);
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    javax.swing.JOptionPane.showMessageDialog(null, result, "Game Over", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+                    System.exit(0);
+                });
+            }
 
             } catch (IOException ex) {
                 System.out.println("Error reading from server: " + ex.getMessage());
