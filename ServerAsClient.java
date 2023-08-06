@@ -27,7 +27,6 @@ public class ServerAsClient {
     }
 
     public void initializeGameGui() {
-        client.initializeGameGui("Red");
-        client.startThreads();
+        client.startThreads(); // Start the client threads
     }
 }
