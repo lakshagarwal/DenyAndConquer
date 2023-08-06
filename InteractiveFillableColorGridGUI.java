@@ -11,9 +11,11 @@ public class InteractiveFillableColorGridGUI extends JFrame {
     private boolean isScribbling = false;
     private int[][] pixelsFilled;
     private TCPClient client;
+    private Color userColor;
 
-    public InteractiveFillableColorGridGUI(TCPClient client) {
+    public InteractiveFillableColorGridGUI(TCPClient client, String color) {
         this.client = client;
+        this.userColor = getColorForOwner(color);
         setTitle("Deny and Conquer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLayout(new GridLayout(GRID_SIZE, GRID_SIZE));
@@ -31,7 +33,7 @@ public class InteractiveFillableColorGridGUI extends JFrame {
                         super.paintComponent(g);
                         if (pixelsFilled[rowIndex][colIndex] > 0) {
                             Graphics2D g2d = (Graphics2D) g;
-                            g2d.setColor(Color.BLACK);
+                            g2d.setColor(userColor);
                             int panelWidth = getWidth();
                             int panelHeight = getHeight();
                             for (int i = 0; i < pixelsFilled[rowIndex][colIndex]; i++) {

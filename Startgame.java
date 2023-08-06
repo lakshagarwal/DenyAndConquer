@@ -47,7 +47,7 @@ public class Startgame extends JFrame {
                 SwingUtilities.invokeLater(() -> {
                     try {
                         TCPClient client = new TCPClient();
-                        client.initializeGameGui(); // Initialize the GUI here
+                        client.startThreads(); // Start the threads
                     } catch(IOException ex) {
                         ex.printStackTrace();
                         System.out.println("Error starting client: " + ex.getMessage());

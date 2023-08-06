@@ -61,7 +61,8 @@ public class TCPServer {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(input));
                 OutputStream output = socket.getOutputStream();
                 writer = new PrintWriter(output, true);
-
+                sendMessage("YOUR_COLOR(" + username + ")");
+                
                 while (true) {
                     String clientMessage = reader.readLine();
                     Matcher matcher = pattern.matcher(clientMessage);

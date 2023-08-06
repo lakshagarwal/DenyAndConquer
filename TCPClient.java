@@ -5,18 +5,21 @@ public class TCPClient {
 
     private Socket socket;
     private PrintWriter writer;
+    public String userColor;
     private InteractiveFillableColorGridGUI gameGui;
 
     public TCPClient() throws IOException {
         this.socket = new Socket("localhost", 7070);
         this.writer = new PrintWriter(socket.getOutputStream(), true);
+    }
 
+    public void startThreads() {
         new ReadThread(socket, this).start(); // Pass this TCPClient instance
         new WriteThread(socket).start();
     }
 
-    public void initializeGameGui() {
-        gameGui = new InteractiveFillableColorGridGUI(this);
+    public void initializeGameGui(String color) {
+        gameGui = new InteractiveFillableColorGridGUI(this, color);
     }
 
     public void lockBox(int row, int col) {
@@ -73,7 +76,13 @@ class ReadThread extends Thread {
                 String response = reader.readLine();
                 System.out.println(response);
 
-            if (response.startsWith("LOCKED")) {
+            if (response.startsWith("YOUR_COLOR")) {
+                String color = response.substring(11, response.length() - 1);
+                javax.swing.SwingUtilities.invokeLater(() -> {
+                    client.userColor = color;
+                    client.initializeGameGui(color); // Initialize the GUI here
+                });
+            } else if (response.startsWith("LOCKED")) {
                 String cellStr = response.substring(7, response.length() - 1);
                 int cellNumber = Integer.parseInt(cellStr);
                 client.lockCellInGui(cellNumber);
@@ -88,9 +97,6 @@ class ReadThread extends Thread {
                 int cellNumber = Integer.parseInt(cellStr);
                 client.claimCellInGui(cellNumber, owner);
             } else if (response.equals("START_GAME")) {
-                    javax.swing.SwingUtilities.invokeLater(() -> {
-                        client.initializeGameGui();
-                    });
                 }
 
             } catch (IOException ex) {
