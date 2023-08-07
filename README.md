@@ -1,6 +1,5 @@
 # DenyAndConquer
 
-Description of the Game:
 "Deny and Conquer” is a multiplayer grid-based game where players compete to claim cells on a shared grid. The primary objective is to paint and claim as many cells as possible while preventing other players from doing the same. A player successfully claims a cell by painting more than 50% of it. The game concludes when all cells are claimed, and the player with the most cells claimed is declared the winner.
 
 Design Overview:
